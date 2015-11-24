@@ -88,7 +88,10 @@ PROCESSOR_CLASSES := \
 
 LOCAL_JAVACFLAGS += -processorpath $(subst $(space),:,$(strip $(PROCESSOR_JARS)))
 
-LOCAL_JAVACFLAGS += -processor $(subst $(space),$(comma),$(strip $(PROCESSOR_CLASSES)))
+# Specify only one processor class per -processor option as
+# the indexing tool does not parse the -processor value as a
+# comma separated list.
+LOCAL_JAVACFLAGS += $(foreach class,$(PROCESSOR_CLASSES),-processor $(class))
 
 #LOCAL_JACK_ENABLED := disabled
 include $(BUILD_HOST_JAVA_LIBRARY)
