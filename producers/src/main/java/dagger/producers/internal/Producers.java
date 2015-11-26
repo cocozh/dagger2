@@ -20,17 +20,10 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.FutureFallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListenableFutureTask;
 import dagger.producers.Produced;
 import dagger.producers.Producer;
 import dagger.producers.monitoring.ProducerMonitor;
-import dagger.producers.monitoring.ProducerToken;
-import dagger.producers.monitoring.ProductionComponentMonitor;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executor;
-import java.util.concurrent.RejectedExecutionException;
-import javax.annotation.Nullable;
 import javax.inject.Provider;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -55,12 +48,17 @@ public final class Producers {
   // TODO(user): Document what happens with an InterruptedException after you figure out how to
   // trigger one in a test.
   public static <T> ListenableFuture<Produced<T>> createFutureProduced(ListenableFuture<T> future) {
+    // TODO(dpb): Switch to Futures.catchAsync once guava_jdk5 gets to v19.
     return Futures.withFallback(
-        Futures.transform(future, new Function<T, Produced<T>>() {
-          @Override public Produced<T> apply(final T value) {
-            return Produced.successful(value);
-          }
-        }), Producers.<T>futureFallbackForProduced());
+        Futures.transform(
+            future,
+            new Function<T, Produced<T>>() {
+              @Override
+              public Produced<T> apply(final T value) {
+                return Produced.successful(value);
+              }
+            }),
+        Producers.<T>futureFallbackForProduced());
 
   }
 
@@ -90,19 +88,6 @@ public final class Producers {
   }
 
   /**
-   * Submits a callable to an executor, returning the future representing the task. This mirrors
-   * {@link com.google.common.util.concurrent.ListeningExecutorService#submit}, but only requires an
-   * {@link Executor}.
-   *
-   * @throws RejectedExecutionException if this task cannot be accepted for execution.
-   */
-  public static <T> ListenableFuture<T> submitToExecutor(Callable<T> callable, Executor executor) {
-    ListenableFutureTask<T> future = ListenableFutureTask.create(callable);
-    executor.execute(future);
-    return future;
-  }
-
-  /**
    * Returns a producer that immediately executes the binding logic for the given provider every
    * time it is called.
    */
@@ -110,20 +95,30 @@ public final class Producers {
     checkNotNull(provider);
     return new AbstractProducer<T>() {
       @Override
-      protected ListenableFuture<T> compute() {
+      protected ListenableFuture<T> compute(ProducerMonitor unusedMonitor) {
         return Futures.immediateFuture(provider.get());
       }
     };
   }
 
-  /** Lifts {@link ProductionComponentMonitor#producerMonitorFor} to nullable types. */
-  @Nullable
-  public static ProducerMonitor producerMonitorFor(
-      @Nullable ProductionComponentMonitor componentMonitor, ProducerToken token) {
-    if (componentMonitor != null) {
-      return componentMonitor.producerMonitorFor(token);
-    }
-    return null;
+  /** Returns a producer that succeeds with the given value. */
+  public static <T> Producer<T> immediateProducer(final T value) {
+    return new Producer<T>() {
+      @Override
+      public ListenableFuture<T> get() {
+        return Futures.immediateFuture(value);
+      }
+    };
+  }
+
+  /** Returns a producer that fails with the given exception. */
+  public static <T> Producer<T> immediateFailedProducer(final Throwable throwable) {
+    return new Producer<T>() {
+      @Override
+      public ListenableFuture<T> get() {
+        return Futures.immediateFailedFuture(throwable);
+      }
+    };
   }
 
   private Producers() {}

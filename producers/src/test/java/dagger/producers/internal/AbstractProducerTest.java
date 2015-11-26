@@ -20,35 +20,51 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import dagger.producers.Producer;
 import dagger.producers.monitoring.ProducerMonitor;
+import dagger.producers.monitoring.ProducerToken;
+import dagger.producers.monitoring.ProductionComponentMonitor;
 import java.util.concurrent.ExecutionException;
+import javax.inject.Provider;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests {@link AbstractProducer}.
  */
 @RunWith(JUnit4.class)
 public class AbstractProducerTest {
-  @Mock private ProducerMonitor monitor;
+  @Mock private ProductionComponentMonitor componentMonitor;
+  private ProducerMonitor monitor;
+  private Provider<ProductionComponentMonitor> componentMonitorProvider;
 
   @Before
   public void initMocks() {
     MockitoAnnotations.initMocks(this);
+    monitor = Mockito.mock(ProducerMonitor.class, Mockito.CALLS_REAL_METHODS);
+    when(componentMonitor.producerMonitorFor(any(ProducerToken.class))).thenReturn(monitor);
+    componentMonitorProvider =
+        new Provider<ProductionComponentMonitor>() {
+          @Override
+          public ProductionComponentMonitor get() {
+            return componentMonitor;
+          }
+        };
   }
 
   @Test
   public void get_nullPointerException() {
-    Producer<Object> producer = new DelegateProducer<>(monitor, null);
+    Producer<Object> producer = new DelegateProducer<>(componentMonitorProvider, null);
     try {
       producer.get();
       fail();
@@ -58,11 +74,11 @@ public class AbstractProducerTest {
 
   @Test public void get() throws Exception {
     Producer<Integer> producer =
-        new AbstractProducer<Integer>(monitor) {
+        new AbstractProducer<Integer>(componentMonitorProvider, null) {
           int i = 0;
 
           @Override
-          public ListenableFuture<Integer> compute() {
+          public ListenableFuture<Integer> compute(ProducerMonitor unusedMonitor) {
             return Futures.immediateFuture(i++);
           }
         };
@@ -74,11 +90,11 @@ public class AbstractProducerTest {
   @Test
   public void monitor_success() throws Exception {
     SettableFuture<Integer> delegateFuture = SettableFuture.create();
-    Producer<Integer> producer = new DelegateProducer<>(monitor, delegateFuture);
+    Producer<Integer> producer = new DelegateProducer<>(componentMonitorProvider, delegateFuture);
 
     ListenableFuture<Integer> future = producer.get();
     assertThat(future.isDone()).isFalse();
-    verifyZeroInteractions(monitor);
+    verify(monitor).addCallbackTo(any(ListenableFuture.class));
     delegateFuture.set(-42);
     assertThat(future.get()).isEqualTo(-42);
     verify(monitor).succeeded(-42);
@@ -88,11 +104,11 @@ public class AbstractProducerTest {
   @Test
   public void monitor_failure() throws Exception {
     SettableFuture<Integer> delegateFuture = SettableFuture.create();
-    Producer<Integer> producer = new DelegateProducer<>(monitor, delegateFuture);
+    Producer<Integer> producer = new DelegateProducer<>(componentMonitorProvider, delegateFuture);
 
     ListenableFuture<Integer> future = producer.get();
     assertThat(future.isDone()).isFalse();
-    verifyZeroInteractions(monitor);
+    verify(monitor).addCallbackTo(any(ListenableFuture.class));
     Throwable t = new RuntimeException("monkey");
     delegateFuture.setException(t);
     try {
@@ -105,22 +121,23 @@ public class AbstractProducerTest {
     verifyNoMoreInteractions(monitor);
   }
 
-  @Test
+  @Test(expected = NullPointerException.class)
   public void monitor_null() throws Exception {
-    Producer<Integer> producer = new DelegateProducer<>(null, Futures.immediateFuture(42));
-    assertThat(producer.get().get()).isEqualTo(42);
+    new DelegateProducer<>(null, Futures.immediateFuture(42));
   }
 
   static final class DelegateProducer<T> extends AbstractProducer<T> {
     private final ListenableFuture<T> delegate;
 
-    DelegateProducer(ProducerMonitor monitor, ListenableFuture<T> delegate) {
-      super(monitor);
+    DelegateProducer(
+        Provider<ProductionComponentMonitor> componentMonitorProvider,
+        ListenableFuture<T> delegate) {
+      super(componentMonitorProvider, null);
       this.delegate = delegate;
     }
 
     @Override
-    public ListenableFuture<T> compute() {
+    public ListenableFuture<T> compute(ProducerMonitor unusedMonitor) {
       return delegate;
     }
   }

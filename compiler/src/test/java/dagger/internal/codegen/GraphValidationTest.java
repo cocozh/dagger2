@@ -28,8 +28,7 @@ import org.junit.runners.JUnit4;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 import static com.google.testing.compile.JavaSourcesSubjectFactory.javaSources;
-import static dagger.internal.codegen.ErrorMessages.NULLABLE_TO_NON_NULLABLE;
-import static java.util.Arrays.asList;
+import static dagger.internal.codegen.ErrorMessages.nullableToNonNullable;
 
 @RunWith(JUnit4.class)
 public class GraphValidationTest {
@@ -69,25 +68,38 @@ public class GraphValidationTest {
   }
 
   @Test public void componentProvisionWithNoDependencyChain() {
-    JavaFileObject component = JavaFileObjects.forSourceLines("test.TestClass",
-        "package test;",
-        "",
-        "import dagger.Component;",
-        "",
-        "final class TestClass {",
-        "  interface A {}",
-        "",
-        "  @Component()",
-        "  interface AComponent {",
-        "    A getA();",
-        "  }",
-        "}");
-    String expectedError =
-        "test.TestClass.A cannot be provided without an @Provides-annotated method.";
-    assertAbout(javaSource()).that(component)
+    JavaFileObject component =
+        JavaFileObjects.forSourceLines(
+            "test.TestClass",
+            "package test;",
+            "",
+            "import dagger.Component;",
+            "import javax.inject.Qualifier;",
+            "",
+            "final class TestClass {",
+            "  @Qualifier @interface Q {}",
+            "  interface A {}",
+            "",
+            "  @Component()",
+            "  interface AComponent {",
+            "    A getA();",
+            "    @Q A qualifiedA();",
+            "  }",
+            "}");
+    assertAbout(javaSource())
+        .that(component)
         .processedWith(new ComponentProcessor())
         .failsToCompile()
-        .withErrorContaining(expectedError).in(component).onLine(10);
+        .withErrorContaining(
+            "test.TestClass.A cannot be provided without an @Provides-annotated method.")
+        .in(component)
+        .onLine(12)
+        .and()
+        .withErrorContaining(
+            "@test.TestClass.Q test.TestClass.A "
+                + "cannot be provided without an @Provides-annotated method.")
+        .in(component)
+        .onLine(13);
   }
 
   @Test public void constructorInjectionWithoutAnnotation() {
@@ -923,8 +935,10 @@ public class GraphValidationTest {
     assertAbout(javaSources()).that(ImmutableList.of(NULLABLE, a, module, component))
         .processedWith(new ComponentProcessor())
         .failsToCompile()
-        .withErrorContaining(String.format(NULLABLE_TO_NON_NULLABLE, "java.lang.String",
-            "@test.Nullable @Provides String test.TestModule.provideString()"));
+        .withErrorContaining(
+            nullableToNonNullable(
+                "java.lang.String",
+                "@test.Nullable @Provides String test.TestModule.provideString()"));
 
     // but if we disable the validation, then it compiles fine.
     assertAbout(javaSources()).that(ImmutableList.of(NULLABLE, a, module, component))
@@ -965,8 +979,10 @@ public class GraphValidationTest {
     assertAbout(javaSources()).that(ImmutableList.of(NULLABLE, a, module, component))
         .processedWith(new ComponentProcessor())
         .failsToCompile()
-        .withErrorContaining(String.format(NULLABLE_TO_NON_NULLABLE, "java.lang.String",
-            "@test.Nullable @Provides String test.TestModule.provideString()"));
+        .withErrorContaining(
+            nullableToNonNullable(
+                "java.lang.String",
+                "@test.Nullable @Provides String test.TestModule.provideString()"));
 
     // but if we disable the validation, then it compiles fine.
     assertAbout(javaSources()).that(ImmutableList.of(NULLABLE, a, module, component))
@@ -1007,8 +1023,10 @@ public class GraphValidationTest {
     assertAbout(javaSources()).that(ImmutableList.of(NULLABLE, a, module, component))
         .processedWith(new ComponentProcessor())
         .failsToCompile()
-        .withErrorContaining(String.format(NULLABLE_TO_NON_NULLABLE, "java.lang.String",
-            "@test.Nullable @Provides String test.TestModule.provideString()"));
+        .withErrorContaining(
+            nullableToNonNullable(
+                "java.lang.String",
+                "@test.Nullable @Provides String test.TestModule.provideString()"));
 
     // but if we disable the validation, then it compiles fine.
     assertAbout(javaSources()).that(ImmutableList.of(NULLABLE, a, module, component))
@@ -1040,8 +1058,10 @@ public class GraphValidationTest {
     assertAbout(javaSources()).that(ImmutableList.of(NULLABLE, module, component))
         .processedWith(new ComponentProcessor())
         .failsToCompile()
-        .withErrorContaining(String.format(NULLABLE_TO_NON_NULLABLE, "java.lang.String",
-            "@test.Nullable @Provides String test.TestModule.provideString()"));
+        .withErrorContaining(
+            nullableToNonNullable(
+                "java.lang.String",
+                "@test.Nullable @Provides String test.TestModule.provideString()"));
 
     // but if we disable the validation, then it compiles fine.
     assertAbout(javaSources()).that(ImmutableList.of(NULLABLE, module, component))

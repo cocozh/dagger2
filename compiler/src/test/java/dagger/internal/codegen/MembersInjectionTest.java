@@ -33,6 +33,7 @@ import org.junit.runners.JUnit4;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 import static com.google.testing.compile.JavaSourcesSubjectFactory.javaSources;
+import static javax.tools.StandardLocation.CLASS_OUTPUT;
 
 @RunWith(JUnit4.class)
 public class MembersInjectionTest {
@@ -87,6 +88,7 @@ public class MembersInjectionTest {
         "    return builder().build();",
         "  }",
         "",
+        "  @SuppressWarnings(\"unchecked\")",
         "  private void initialize(final Builder builder) {",
         "    this.childProvider =",
         "        Child_Factory.create((MembersInjector) MembersInjectors.noOp());",
@@ -176,6 +178,7 @@ public class MembersInjectionTest {
             "    return builder().build();",
             "  }",
             "",
+            "  @SuppressWarnings(\"unchecked\")",
             "  private void initialize(final Builder builder) {",
             "    this.childMembersInjector = Child_MembersInjector.create(Dep_Factory.create());",
             "    this.childProvider = Child_Factory.create(childMembersInjector);",
@@ -871,5 +874,48 @@ public class MembersInjectionTest {
         .compilesWithoutError()
         .and()
         .generatesSources(bMembersInjector);
+  }
+
+  @Test
+  public void lowerCaseNamedMembersInjector_forLowerCaseType() {
+    JavaFileObject foo =
+        JavaFileObjects.forSourceLines(
+            "test.foo",
+            "package test;",
+            "",
+            "import javax.inject.Inject;",
+            "",
+            "class foo {",
+            "  @Inject String string;",
+            "}");
+    JavaFileObject fooModule =
+        JavaFileObjects.forSourceLines(
+            "test.fooModule",
+            "package test;",
+            "",
+            "import dagger.Module;",
+            "import dagger.Provides;",
+            "",
+            "@Module",
+            "class fooModule {",
+            "  @Provides String string() { return \"foo\"; }",
+            "}");
+    JavaFileObject fooComponent =
+        JavaFileObjects.forSourceLines(
+            "test.fooComponent",
+            "package test;",
+            "",
+            "import dagger.Component;",
+            "",
+            "@Component(modules = fooModule.class)",
+            "interface fooComponent {",
+            "  void inject(foo target);",
+            "}");
+
+    assertAbout(javaSources())
+        .that(ImmutableList.of(foo, fooModule, fooComponent))
+        .processedWith(new ComponentProcessor())
+        .compilesWithoutError()
+        .and().generatesFileNamed(CLASS_OUTPUT, "test", "foo_MembersInjector.class");
   }
 }

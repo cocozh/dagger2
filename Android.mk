@@ -24,7 +24,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
 LOCAL_SRC_FILES := $(call all-java-files-under, core/src/main/java/)
 
-LOCAL_STATIC_JAVA_LIBRARIES := \
+LOCAL_JAVA_LIBRARIES := \
   dagger2-inject-host \
   guavalib
 
@@ -41,12 +41,11 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
 LOCAL_SRC_FILES := $(call all-java-files-under, producers/src/main/java/)
 
-LOCAL_STATIC_JAVA_LIBRARIES := \
+LOCAL_JAVA_LIBRARIES := \
   dagger2-host \
   dagger2-inject-host \
   guavalib
 
-#LOCAL_JACK_ENABLED := disabled
 include $(BUILD_HOST_JAVA_LIBRARY)
 
 # build dagger2 compiler host jar
@@ -58,6 +57,10 @@ LOCAL_MODULE := dagger2-compiler-host
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
 LOCAL_SRC_FILES := $(call all-java-files-under, compiler/src/main/java/)
+
+# Manually include META-INF/services/javax.annotation.processing.Processor
+# as the AutoService processor doesn't work properly.
+LOCAL_JAVA_RESOURCE_DIRS := resources
 
 LOCAL_STATIC_JAVA_LIBRARIES := \
   dagger2-host \
@@ -73,12 +76,12 @@ LOCAL_STATIC_JAVA_LIBRARIES := \
 # Disable the default discovery for annotation processors and explicitly specify
 # the path and classes needed. This is needed because otherwise it breaks a code
 # indexing tool that doesn't, as yet do automatic discovery.
-PROCESSOR_JARS := \
-    $(LOCAL_PATH)/../../out/host/common/obj/JAVA_LIBRARIES/guavalib_intermediates/javalib.jar \
-    $(LOCAL_PATH)/lib/auto-common-1.0-20151022.071545-39$(COMMON_JAVA_PACKAGE_SUFFIX) \
-    $(LOCAL_PATH)/lib/auto-factory-1.0-20150915.183854-35$(COMMON_JAVA_PACKAGE_SUFFIX) \
-    $(LOCAL_PATH)/lib/auto-service-1.0-rc2$(COMMON_JAVA_PACKAGE_SUFFIX) \
-    $(LOCAL_PATH)/lib/auto-value-1.0$(COMMON_JAVA_PACKAGE_SUFFIX) \
+PROCESSOR_LIBRARIES := \
+  dagger2-auto-common-host \
+  dagger2-auto-factory-host \
+  dagger2-auto-service-host \
+  dagger2-auto-value-host \
+  guavalib
 
 PROCESSOR_CLASSES := \
   com.google.auto.factory.processor.AutoFactoryProcessor \
@@ -86,14 +89,8 @@ PROCESSOR_CLASSES := \
   com.google.auto.value.processor.AutoAnnotationProcessor \
   com.google.auto.value.processor.AutoValueProcessor
 
-LOCAL_JAVACFLAGS += -processorpath $(subst $(space),:,$(strip $(PROCESSOR_JARS)))
+include $(LOCAL_PATH)/java_annotation_processors.mk
 
-# Specify only one processor class per -processor option as
-# the indexing tool does not parse the -processor value as a
-# comma separated list.
-LOCAL_JAVACFLAGS += $(foreach class,$(PROCESSOR_CLASSES),-processor $(class))
-
-#LOCAL_JACK_ENABLED := disabled
 include $(BUILD_HOST_JAVA_LIBRARY)
 
 # Build host dependencies.
@@ -106,6 +103,6 @@ LOCAL_PREBUILT_JAVA_LIBRARIES := \
     dagger2-auto-service-host:lib/auto-service-1.0-rc2$(COMMON_JAVA_PACKAGE_SUFFIX) \
     dagger2-auto-value-host:lib/auto-value-1.0$(COMMON_JAVA_PACKAGE_SUFFIX) \
     dagger2-google-java-format:lib/google-java-format-0.1-20151017.042846-2$(COMMON_JAVA_PACKAGE_SUFFIX) \
-    dagger2-inject-host:lib/javax-inject$(COMMON_JAVA_PACKAGE_SUFFIX) \
+    dagger2-inject-host:lib/javax-inject$(COMMON_JAVA_PACKAGE_SUFFIX)
 
 include $(BUILD_HOST_PREBUILT)

@@ -127,7 +127,6 @@ public final class ClassName implements TypeName, Comparable<ClassName> {
   public ClassName nestedClassNamed(String memberClassName) {
     checkNotNull(memberClassName);
     checkArgument(SourceVersion.isIdentifier(memberClassName));
-    checkArgument(Ascii.isUpperCase(memberClassName.charAt(0)));
     return new ClassName(packageName(),
         new ImmutableList.Builder<String>()
             .addAll(enclosingSimpleNames())
@@ -139,8 +138,15 @@ public final class ClassName implements TypeName, Comparable<ClassName> {
   public ClassName peerNamed(String peerClassName) {
     checkNotNull(peerClassName);
     checkArgument(SourceVersion.isIdentifier(peerClassName));
-    checkArgument(Ascii.isUpperCase(peerClassName.charAt(0)));
     return new ClassName(packageName(), enclosingSimpleNames(), peerClassName);
+  }
+
+  /**
+   * Returns a parameterized type name with this as its raw type if {@code parameters} is not empty.
+   * If {@code parameters} is empty, returns this object.
+   */
+  public TypeName withTypeParameters(List<? extends TypeName> parameters) {
+    return parameters.isEmpty() ? this : ParameterizedTypeName.create(this, parameters);
   }
 
   private static final ImmutableSet<NestingKind> ACCEPTABLE_NESTING_KINDS =

@@ -19,6 +19,7 @@ import com.google.auto.common.MoreElements;
 import com.google.auto.common.MoreTypes;
 import com.google.auto.value.AutoValue;
 import com.google.common.base.Optional;
+import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -73,7 +74,7 @@ abstract class ComponentDescriptor {
   enum Kind {
     COMPONENT(Component.class, Component.Builder.class, true),
     SUBCOMPONENT(Subcomponent.class, Subcomponent.Builder.class, false),
-    PRODUCTION_COMPONENT(ProductionComponent.class, null, true);
+    PRODUCTION_COMPONENT(ProductionComponent.class, ProductionComponent.Builder.class, true);
 
     private final Class<? extends Annotation> annotationType;
     private final Class<? extends Annotation> builderType;
@@ -203,6 +204,18 @@ abstract class ComponentDescriptor {
     abstract ComponentMethodKind kind();
     abstract Optional<DependencyRequest> dependencyRequest();
     abstract ExecutableElement methodElement();
+    
+    /**
+     * A predicate that passes for {@link ComponentMethodDescriptor}s of a given kind.
+     */
+    static Predicate<ComponentMethodDescriptor> isOfKind(final ComponentMethodKind kind) {
+      return new Predicate<ComponentMethodDescriptor>() {
+        @Override
+        public boolean apply(ComponentMethodDescriptor descriptor) {
+          return kind.equals(descriptor.kind());
+        }
+      };
+    }
   }
 
   enum ComponentMethodKind {
@@ -212,7 +225,7 @@ abstract class ComponentDescriptor {
     SUBCOMPONENT,
     SUBCOMPONENT_BUILDER,
   }
-
+  
   @AutoValue
   static abstract class BuilderSpec {
     abstract TypeElement builderDefinitionType();
@@ -283,6 +296,9 @@ abstract class ComponentDescriptor {
       ImmutableSet.Builder<ModuleDescriptor> modules = ImmutableSet.builder();
       for (TypeMirror moduleIncludesType : getComponentModules(componentMirror)) {
         modules.add(moduleDescriptorFactory.create(MoreTypes.asTypeElement(moduleIncludesType)));
+      }
+      if (kind.equals(Kind.PRODUCTION_COMPONENT)) {
+        modules.add(descriptorForMonitoringModule(componentDefinitionType));
       }
 
       ImmutableSet<ExecutableElement> unimplementedMethods =
@@ -433,6 +449,23 @@ abstract class ComponentDescriptor {
       verify(buildMethod != null); // validation should have ensured this.
       return Optional.<BuilderSpec>of(new AutoValue_ComponentDescriptor_BuilderSpec(element,
           map.build(), buildMethod, element.getEnclosingElement().asType()));
+    }
+
+    /**
+     * Returns a descriptor for a generated module that handles monitoring for production
+     * components. This module is generated in the {@link MonitoringModuleProcessingStep}.
+     *
+     * @throws TypeNotPresentException if the module has not been generated yet. This will cause the
+     *     processor to retry in a later processing round.
+     */
+    private ModuleDescriptor descriptorForMonitoringModule(TypeElement componentDefinitionType) {
+      String generatedMonitorModuleName =
+          SourceFiles.generatedMonitoringModuleName(componentDefinitionType).canonicalName();
+      TypeElement monitoringModule = elements.getTypeElement(generatedMonitorModuleName);
+      if (monitoringModule == null) {
+        throw new TypeNotPresentException(generatedMonitorModuleName, null);
+      }
+      return moduleDescriptorFactory.create(monitoringModule);
     }
   }
 
