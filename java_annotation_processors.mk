@@ -59,8 +59,6 @@ LOCAL_ADDITIONAL_DEPENDENCIES += $(PROCESSOR_JARS) $(GENERATED_SOURCE_DIR)
 $(GENERATED_SOURCE_DIR):
 	mkdir -p $@
 
-LOCAL_JACK_ENABLED := disabled
-
 # Clean up all the extra variables to make sure that they don't escape to
 # another module.
 PROCESSOR_LIBRARIES :=

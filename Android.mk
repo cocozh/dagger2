@@ -28,7 +28,6 @@ LOCAL_JAVA_LIBRARIES := \
   dagger2-inject-host \
   guavalib
 
-#LOCAL_JACK_ENABLED := disabled
 include $(BUILD_HOST_JAVA_LIBRARY)
 
 # build dagger2 producers host jar
