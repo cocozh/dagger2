@@ -28,6 +28,7 @@ LOCAL_JAVA_LIBRARIES := \
   dagger2-inject-host \
   guavalib
 
+LOCAL_JAVA_LANGUAGE_VERSION := 1.7
 include $(BUILD_HOST_JAVA_LIBRARY)
 
 # build dagger2 producers host jar
@@ -45,6 +46,7 @@ LOCAL_JAVA_LIBRARIES := \
   dagger2-inject-host \
   guavalib
 
+LOCAL_JAVA_LANGUAGE_VERSION := 1.7
 include $(BUILD_HOST_JAVA_LIBRARY)
 
 # build dagger2 compiler host jar
@@ -90,6 +92,7 @@ PROCESSOR_CLASSES := \
 
 include $(LOCAL_PATH)/java_annotation_processors.mk
 
+LOCAL_JAVA_LANGUAGE_VERSION := 1.7
 include $(BUILD_HOST_JAVA_LIBRARY)
 
 # Build host dependencies.
