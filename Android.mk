@@ -74,23 +74,18 @@ LOCAL_STATIC_JAVA_LIBRARIES := \
   dagger2-producers-host \
   guavalib
 
-# Disable the default discovery for annotation processors and explicitly specify
-# the path and classes needed. This is needed because otherwise it breaks a code
-# indexing tool that doesn't, as yet do automatic discovery.
-PROCESSOR_LIBRARIES := \
+LOCAL_ANNOTATION_PROCESSORS := \
   dagger2-auto-common-host \
   dagger2-auto-factory-host \
   dagger2-auto-service-host \
   dagger2-auto-value-host \
   guavalib
 
-PROCESSOR_CLASSES := \
+LOCAL_ANNOTATION_PROCESSOR_CLASSES := \
   com.google.auto.factory.processor.AutoFactoryProcessor \
   com.google.auto.service.processor.AutoServiceProcessor \
   com.google.auto.value.processor.AutoAnnotationProcessor \
   com.google.auto.value.processor.AutoValueProcessor
-
-include $(LOCAL_PATH)/java_annotation_processors.mk
 
 LOCAL_JAVA_LANGUAGE_VERSION := 1.7
 include $(BUILD_HOST_JAVA_LIBRARY)
