@@ -57,6 +57,8 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := dagger2-compiler-host
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := JAVA_LIBRARIES
+# Required for use of javax.annotation.Generated per http://b/62050818
+LOCAL_JAVACFLAGS := $(if $(EXPERIMENTAL_USE_OPENJDK9),-J--add-modules=java.xml.ws.annotation,)
 LOCAL_SRC_FILES := $(call all-java-files-under, compiler/src/main/java/)
 
 # Manually include META-INF/services/javax.annotation.processing.Processor
