@@ -100,7 +100,7 @@ LOCAL_PREBUILT_JAVA_LIBRARIES := \
     dagger2-auto-common-host:lib/auto-common-1.0-20151022.071545-39$(COMMON_JAVA_PACKAGE_SUFFIX) \
     dagger2-auto-factory-host:lib/auto-factory-1.0-20150915.183854-35$(COMMON_JAVA_PACKAGE_SUFFIX) \
     dagger2-auto-service-host:lib/auto-service-1.0-rc2$(COMMON_JAVA_PACKAGE_SUFFIX) \
-    dagger2-auto-value-host:lib/auto-value-1.0$(COMMON_JAVA_PACKAGE_SUFFIX) \
+    dagger2-auto-value-host:lib/auto-value-1.4.1$(COMMON_JAVA_PACKAGE_SUFFIX) \
     dagger2-google-java-format:lib/google-java-format-0.1-20151017.042846-2$(COMMON_JAVA_PACKAGE_SUFFIX) \
     dagger2-inject-host:lib/javax-inject$(COMMON_JAVA_PACKAGE_SUFFIX)
 
